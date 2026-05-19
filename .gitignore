@@ -1,0 +1,80 @@
+# --- Flutter / Dart ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+.fvm/
+.fvmrc
+
+# --- IDE / editor ---
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.metadata
+
+# --- macOS ---
+.DS_Store
+
+# --- iOS ---
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+
+# --- macOS desktop ---
+macos/Pods/
+macos/Flutter/ephemeral/
+macos/Runner.xcworkspace/xcuserdata/
+macos/Runner.xcodeproj/xcuserdata/
+
+# --- Android ---
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+android/key.properties
+*.jks
+*.keystore
+
+# --- Windows ---
+windows/flutter/ephemeral/
+
+# --- Coverage ---
+coverage/
+*.lcov
+
+# --- Generated (Drift, Freezed, etc.) ---
+# Keep .g.dart and .freezed.dart files OUT of version control;
+# they regenerate on `dart run build_runner build`.
+*.g.dart
+*.freezed.dart
+lib/generated/
+
+# --- App data — sensitive ---
+# Never commit local league databases or evidence blobs.
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.db.enc
+evidence/
+leagues/
+
+# --- Secrets ---
+.env
+.env.local
+secrets.json
+
+# --- Test artifacts ---
+.test_coverage.dart
+test/.test_coverage.dart

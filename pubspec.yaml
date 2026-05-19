@@ -1,0 +1,72 @@
+name: mtll_safety_app
+description: "Multi-tenant Little League volunteer safety-clearance app"
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ----- State management (EXECUTION-PLAN §3.1) -----
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.5.1
+
+  # ----- Local DB (EXECUTION-PLAN §3.1, §6.1, §6.2) -----
+  drift: ^2.18.0
+  sqlite3: ^2.4.0
+  sqlite3_flutter_libs: ^0.5.24
+  # SQLCipher binding for encrypted DB. EXECUTION-PLAN §6.1.1.
+  sqlcipher_flutter_libs: ^0.6.4
+
+  # ----- Crypto (EXECUTION-PLAN §6.4 evidence; §6.1 KDF) -----
+  cryptography: ^2.7.0
+  # Argon2id for SQLCipher master-key derivation (§6.1.1 step 2).
+  pointycastle: ^3.9.1
+
+  # ----- Platform integrations (EXECUTION-PLAN §3.1, §6.5) -----
+  flutter_secure_storage: ^9.2.2  # OS keystore for db_salt
+  local_auth: ^2.3.0  # biometric unlock (§6.5.1 + §6.5.1.a)
+  path: ^1.9.0
+  path_provider: ^2.1.4
+
+  # ----- Models / serialization (EXECUTION-PLAN §3.1, §6.x) -----
+  freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
+  uuid: ^4.5.1  # UUIDv7 PKs (§2.1)
+  collection: ^1.18.0
+  intl: ^0.19.0  # i18n + date formatting (PRD §6.5)
+
+  # ----- CSV (W4 import, W11 reverse-export) -----
+  csv: ^6.0.0
+
+  # ----- File picking (W3/W4 evidence + CSV upload) -----
+  file_picker: ^8.1.2
+
+  # ----- Cupertino icons (Flutter default) -----
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  # ----- Linting -----
+  flutter_lints: ^6.0.0
+  custom_lint: ^0.7.3
+  riverpod_lint: ^2.6.5
+
+  # ----- Code generation -----
+  build_runner: ^2.4.13
+  drift_dev: ^2.18.0
+  riverpod_generator: ^2.6.3
+  freezed: ^3.0.0
+  json_serializable: ^6.8.0
+
+flutter:
+  uses-material-design: true
+  generate: true  # enable l10n codegen for en-US (v1) / es-MX (v2)
