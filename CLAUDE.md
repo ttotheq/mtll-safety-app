@@ -45,7 +45,7 @@ This app stores **no player data**. The data-model chain terminates at Team. The
 
 The scope wall is enforced at three layers:
 
-1. **Schema test** — `test('no player table exists in schema')` asserts no table named `player`, `roster`, `minor`, or `athlete`. Fails the build if anyone adds one. See EXECUTION-PLAN §6.8.2.
+1. **Schema test / CI guard** — maintain a load-bearing schema check that rejects table names containing `player`, `roster`, `minor`, `athlete`, `draft`, `evaluation`, or `registration`. If older repo docs mention a narrower token list, treat the broader EXECUTION-PLAN wording as authoritative. See EXECUTION-PLAN §6.8.2, §7.4, and §9.
 2. **CSV export PII denylist** — compile-time `Set<String>` in `CsvExportPolicy.kPiiDeniedColumns` blocks `dob`, `phone_e164`, `address_json` from W11 reverse-export. See §6.8.4.
 3. **PR template checklist** — `[ ] NO PLAYER DATA INTRODUCED`. See §6.8.5 and §7.4 Definition of Done.
 
@@ -59,6 +59,46 @@ Multi-tenant from v1 day one (EXECUTION-PLAN §6.3):
 - `league_id` column on every league-scoped entity provides defense-in-depth. The `LeagueScopedRepository<T>` base class enforces tenant scoping at query time.
 - Cross-tenant access attempts emit `CROSS_TENANT_ACCESS_ATTEMPT` audit entries and throw `AssertionError`.
 - A custom Dart analyzer lint blocks any `select()` / `delete()` on a league-scoped table that lacks a `leagueId` filter.
+
+## Two-repo layout
+
+The project spans two sibling directories. **Code lives here; spec lives next door.**
+
+```
+~/projects/
+├── safety/                       ← SISTER REPO — spec workspace (PRD, design, plan, source workbook archive)
+│                                 see ~/projects/safety/CLAUDE.md and HANDOFF.md
+│
+└── mtll-safety-app/              ← THIS REPO — Flutter implementation
+    ├── CLAUDE.md                 this file
+    ├── HANDOFF.md                current implementation handoff / continuation guide
+    ├── HANDOFF_TEMPLATE.md       required structure for future handoffs
+    ├── README.md                 project intro
+    ├── pubspec.yaml              locked stack (Drift ^2.18, SQLCipher, Riverpod ^2.5, etc.)
+    ├── analysis_options.yaml     Dart analyzer config
+    ├── .claude/agents/           7 read-only sub-agents (copied from spec workspace)
+    ├── .gitignore                Flutter + native build + generated code + *.db.enc + evidence/
+    │
+    ├── lib/                      Dart application code
+    │   ├── main.dart             Flutter entry point (default scaffold; will be replaced)
+    │   ├── app/                  root widget + global UI overlays (§5.D tamper modal, migration-failed modal)
+    │   ├── data/
+    │   │   ├── database/         Drift schema — 16 entities + 3 supporting tables (Sprint 1 fills this)
+    │   │   └── repositories/     LeagueScopedRepository<T> base + per-entity repos
+    │   ├── domain/               Freezed models + business invariants
+    │   ├── security/             KeyProvider, AuditChainVerifier, AuthenticationCoordinator
+    │   ├── presentation/         screens, widgets (Sprint S3+ UI work)
+    │   └── l10n/                 ARB files (en-US v1, es-MX v2)
+    │
+    ├── test/                     unit + widget tests (load-bearing: no-player-table, audit-immutability, cross-tenant)
+    │
+    ├── android/                  Android native scaffold (v1 target, no SDK installed yet)
+    ├── ios/                      iOS native scaffold (MVP target, needs Xcode for build)
+    ├── macos/                    macOS native scaffold (MVP target, needs Xcode for build)
+    └── windows/                  Windows native scaffold (v1 target)
+```
+
+**Pick the right cwd for the work.** Open Claude Code from `~/projects/mtll-safety-app/` (here) to write app code; open from `~/projects/safety/` to edit the spec. Sub-agent discovery is anchored to cwd — opening from a subdirectory like `lib/` may miss them. The seven sub-agents at `.claude/agents/` are copies of the spec workspace's set; they're read-only design advisors, not code authors.
 
 ## Sub-agents
 
@@ -81,6 +121,18 @@ These are read-only advisors that produce Markdown sections. Use them for design
 - **AuditLog is append-only at the DB layer.** Two SQLite triggers (`audit_log_no_update` / `audit_log_no_delete`) make this a hard enforcement, not a UI convention. See §6.2.1.
 - **AuditLogChain** seals each day's audit rows in a Merkle hash chain. Tamper detection fires a global modal overlay (§5.D.1) and puts the app in read-only mode.
 - **Drift migrations are forward-only.** No rollback path. Failed migrations land the app on a `MIGRATION_FAILED` modal (§5.D.2) and require restoring from backup.
+
+## Handoff protocol
+
+When writing or revising `HANDOFF.md`, follow `HANDOFF_TEMPLATE.md`.
+
+- Use current repo state and commands run in the same session for implementation facts.
+- Use the current spec workspace for requirements, DoD gates, and any claimed continuation order.
+- Treat prior handoffs as secondary context only.
+- Re-run commands before claiming they passed, and record the exact commands under a verification section.
+- Include a `Conflicts / Inconsistencies` section whenever repo code, repo docs, or spec docs disagree. Cite exact files.
+- Separate `Verified Next Steps` from `Recommendations`.
+- Do not present local numbering, inferred task order, or narrative summaries as canonical project truth unless a current primary source explicitly says so.
 
 ## Concurrent sessions
 

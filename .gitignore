@@ -38,8 +38,6 @@ macos/Runner.xcodeproj/xcuserdata/
 # --- Android ---
 android/.gradle/
 android/captures/
-android/gradlew
-android/gradlew.bat
 android/local.properties
 android/**/GeneratedPluginRegistrant.java
 android/key.properties
@@ -78,3 +76,6 @@ secrets.json
 # --- Test artifacts ---
 .test_coverage.dart
 test/.test_coverage.dart
+
+# --- Local logs ---
+flutter_*.log
