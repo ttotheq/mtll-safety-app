@@ -59,6 +59,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   custom_lint: ^0.7.3
   riverpod_lint: ^2.6.5
+  # Project-local cross-tenant query lint (EXECUTION-PLAN §6.3.5).
+  mtll_lints:
+    path: lints/mtll_lints
 
   # ----- Code generation -----
   build_runner: ^2.4.13

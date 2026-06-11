@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 void main() {
+  // Default scaffold pending the S2 app bootstrap; ProviderScope arrives with
+  // the real root widget.
+  // ignore: missing_provider_scope
   runApp(const MyApp());
 }
 

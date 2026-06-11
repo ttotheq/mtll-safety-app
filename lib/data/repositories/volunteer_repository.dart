@@ -12,6 +12,7 @@ class VolunteerRepository extends LeagueScopedRepository {
 
   Future<VolunteerRow?> getById(String id) async {
     // Fetch by ID first so cross-tenant UUID probes are audited before denial.
+    // ignore: cross_tenant_query
     final row = await (db.select(
       db.volunteers,
     )..where((volunteer) => volunteer.id.equals(id))).getSingleOrNull();

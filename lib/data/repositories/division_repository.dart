@@ -124,6 +124,8 @@ class DivisionRepository extends LeagueScopedRepository {
           ),
         );
 
+    // Row was just written under the tenant filter above.
+    // ignore: cross_tenant_query
     final updated = await (db.select(
       db.divisions,
     )..where((division) => division.id.equals(id))).getSingle();
@@ -140,6 +142,9 @@ class DivisionRepository extends LeagueScopedRepository {
   }
 
   Future<DivisionRow?> _findById(String id) {
+    // Unfiltered by design: callers run assertLeagueScope on the row
+    // so cross-tenant UUID probes are audited before denial.
+    // ignore: cross_tenant_query
     return (db.select(
       db.divisions,
     )..where((division) => division.id.equals(id))).getSingleOrNull();

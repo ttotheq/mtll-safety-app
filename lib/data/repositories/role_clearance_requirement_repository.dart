@@ -138,6 +138,8 @@ class RoleClearanceRequirementRepository extends LeagueScopedRepository {
       ),
     );
 
+    // Row was just written under the tenant filter above.
+    // ignore: cross_tenant_query
     final updated = await (db.select(
       db.roleClearanceRequirements,
     )..where((row) => row.id.equals(id))).getSingle();
@@ -167,6 +169,9 @@ class RoleClearanceRequirementRepository extends LeagueScopedRepository {
   }
 
   Future<RoleClearanceRequirementRow?> _findById(String id) {
+    // Unfiltered by design: callers run assertLeagueScope on the row
+    // so cross-tenant UUID probes are audited before denial.
+    // ignore: cross_tenant_query
     return (db.select(
       db.roleClearanceRequirements,
     )..where((row) => row.id.equals(id))).getSingleOrNull();

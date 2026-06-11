@@ -134,6 +134,8 @@ class TeamRepository extends LeagueScopedRepository {
       ),
     );
 
+    // Row was just written under the tenant filter above.
+    // ignore: cross_tenant_query
     final updated = await (db.select(
       db.teams,
     )..where((team) => team.id.equals(id))).getSingle();
@@ -156,6 +158,9 @@ class TeamRepository extends LeagueScopedRepository {
 
   Future<DivisionRow> _requireDivision(String divisionId) async {
     final id = requireNonBlank(divisionId, 'divisionId');
+    // Unfiltered by design: assertLeagueScope below audits cross-tenant
+    // division references before denial.
+    // ignore: cross_tenant_query
     final division = await (db.select(
       db.divisions,
     )..where((row) => row.id.equals(id))).getSingleOrNull();
@@ -172,6 +177,9 @@ class TeamRepository extends LeagueScopedRepository {
   }
 
   Future<TeamRow?> _findById(String id) {
+    // Unfiltered by design: callers run assertLeagueScope on the row
+    // so cross-tenant UUID probes are audited before denial.
+    // ignore: cross_tenant_query
     return (db.select(
       db.teams,
     )..where((team) => team.id.equals(id))).getSingleOrNull();
