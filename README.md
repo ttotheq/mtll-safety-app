@@ -25,6 +25,10 @@ This repo is the implementation. Authoritative spec lives at `~/projects/safety/
 
 Flutter 3.x · Riverpod ^2.5 · Drift ^2.18 · SQLite + SQLCipher · cryptography ^2.7 · flutter_secure_storage ^9 · local_auth · freezed · uuid
 
+## Workflow
+
+GitHub is the canonical system of record for this project. From here forward, changes should follow standard configuration-management practices: keep non-secret configuration and build-critical tooling in version control, use focused commits and pull requests for meaningful changes, and keep secrets, generated artifacts, and machine-local overrides out of the repository.
+
 ## License
 
 TBD. (Distribution model is GitHub Releases self-install; license decision before first public release.)
