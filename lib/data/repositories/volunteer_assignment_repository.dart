@@ -142,6 +142,8 @@ class VolunteerAssignmentRepository extends LeagueScopedRepository {
           ),
         );
 
+    // Row was just written under the tenant filter above.
+    // ignore: cross_tenant_query
     final updated = await (db.select(
       db.volunteerAssignments,
     )..where((assignment) => assignment.id.equals(id))).getSingle();
@@ -171,6 +173,9 @@ class VolunteerAssignmentRepository extends LeagueScopedRepository {
   }
 
   Future<VolunteerAssignmentRow?> _findById(String id) {
+    // Unfiltered by design: callers run assertLeagueScope on the row
+    // so cross-tenant UUID probes are audited before denial.
+    // ignore: cross_tenant_query
     return (db.select(
       db.volunteerAssignments,
     )..where((assignment) => assignment.id.equals(id))).getSingleOrNull();
