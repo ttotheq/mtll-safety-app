@@ -121,6 +121,8 @@ These are read-only advisors that produce Markdown sections. Use them for design
 - **AuditLog is append-only at the DB layer.** Two SQLite triggers (`audit_log_no_update` / `audit_log_no_delete`) make this a hard enforcement, not a UI convention. See §6.2.1.
 - **AuditLogChain** seals each day's audit rows in a Merkle hash chain. Tamper detection fires a global modal overlay (§5.D.1) and puts the app in read-only mode.
 - **Drift migrations are forward-only.** No rollback path. Failed migrations land the app on a `MIGRATION_FAILED` modal (§5.D.2) and require restoring from backup.
+- **GitHub is the canonical collaboration surface.** Use GitHub branches, commits, pull requests, issues, and releases as the durable project record instead of ad hoc local-only workflow.
+- **Use industry-standard configuration management.** Keep non-secret configuration, templates, and build-critical wrappers under version control; keep secrets, generated outputs, and machine-local overrides out of git; and document configuration changes in repo docs, handoffs, and PRs when they affect setup or deployment.
 
 ## Handoff protocol
 

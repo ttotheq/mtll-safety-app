@@ -21,6 +21,11 @@ Use `flutter_test` for widget, schema, and repository tests. Name tests after be
 ## Commit & Pull Request Guidelines
 Current history uses concise conventional prefixes such as `scaffold:`, `feat:`, and `chore:`. Keep commit subjects imperative and specific, for example `feat: add season uniqueness constraint`. Every PR should pass `flutter analyze` and `flutter test`, include tests for new behavior, and reference the relevant section of `~/projects/safety/plan/EXECUTION-PLAN.md`. Include screenshots only when a visible UI change is part of the review.
 
+## Configuration Management & GitHub
+Use GitHub as the canonical remote and collaboration system of record for this repo. Prefer short-lived branches, focused commits, and pull requests for non-trivial changes, and keep `main` releasable by running `flutter analyze` and `flutter test` before merge-ready handoff.
+
+Treat configuration as code. Version non-secret defaults, templates, and build-critical wrappers; document configuration changes in PRs and handoffs; and keep secrets, tokens, local databases, machine-specific overrides, and generated artifacts out of version control unless the repo guidelines explicitly require them.
+
 ## Handoff Discipline
 When creating or updating `HANDOFF.md`, use `HANDOFF_TEMPLATE.md` and keep the document evidence-first rather than narrative-first.
 
