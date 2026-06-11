@@ -50,6 +50,12 @@ class RoleClearanceRequirementRepository extends LeagueScopedRepository {
     int? minAge,
     String? notes,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'RoleClearanceRequirement',
+      operation: 'create',
+    );
+
     final now = currentTimestamp();
     final row = RoleClearanceRequirementRow(
       id: newId(),
@@ -101,6 +107,13 @@ class RoleClearanceRequirementRepository extends LeagueScopedRepository {
     int? minAge,
     String? notes,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'RoleClearanceRequirement',
+      operation: 'update',
+      entityId: id,
+    );
+
     final existing = await _findById(id);
     if (existing == null) {
       return null;
@@ -113,18 +126,17 @@ class RoleClearanceRequirementRepository extends LeagueScopedRepository {
     );
 
     final now = currentTimestamp();
-    await (db.update(db.roleClearanceRequirements)..where(
-          (row) => row.id.equals(id) & tenantFilter(row.leagueId),
-        ))
-        .write(
-          RoleClearanceRequirementsCompanion(
-            requirement: Value(_requireRequirementLevel(requirement)),
-            minAge: Value(minAge),
-            notes: Value(normalizeNullable(notes)),
-            updatedAt: Value(now),
-            updatedByUserId: Value(sessionContext.userId),
-          ),
-        );
+    await (db.update(
+      db.roleClearanceRequirements,
+    )..where((row) => row.id.equals(id) & tenantFilter(row.leagueId))).write(
+      RoleClearanceRequirementsCompanion(
+        requirement: Value(_requireRequirementLevel(requirement)),
+        minAge: Value(minAge),
+        notes: Value(normalizeNullable(notes)),
+        updatedAt: Value(now),
+        updatedByUserId: Value(sessionContext.userId),
+      ),
+    );
 
     final updated = await (db.select(
       db.roleClearanceRequirements,

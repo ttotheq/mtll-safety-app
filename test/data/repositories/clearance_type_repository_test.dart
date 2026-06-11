@@ -112,7 +112,11 @@ void main() {
         final userId = uuid.v7();
         final repository = ClearanceTypeRepository(
           db: db,
-          sessionContext: SessionContext(leagueId: leagueId, userId: userId),
+          sessionContext: SessionContext(
+            leagueId: leagueId,
+            userId: userId,
+            role: UserRole.admin,
+          ),
         );
 
         await _insertLeague(db, leagueId, 'League A');

@@ -44,6 +44,12 @@ class ClearanceTypeRepository extends LeagueScopedRepository {
     String? sourceUrl,
     bool active = true,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'ClearanceType',
+      operation: 'create',
+    );
+
     final now = currentTimestamp();
     final row = ClearanceTypeRow(
       id: newId(),
@@ -113,6 +119,13 @@ class ClearanceTypeRepository extends LeagueScopedRepository {
     String? sourceUrl,
     required bool active,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'ClearanceType',
+      operation: 'update',
+      entityId: id,
+    );
+
     final existing = await _findById(id);
     if (existing == null) {
       return null;

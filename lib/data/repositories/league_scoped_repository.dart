@@ -6,6 +6,8 @@ import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import 'session_context.dart';
 
+export 'session_context.dart' show AuthorizationException, UserRole;
+
 abstract class LeagueScopedRepository {
   LeagueScopedRepository({
     required this.db,
@@ -16,6 +18,7 @@ abstract class LeagueScopedRepository {
   static const createAction = 'CREATE';
   static const updateAction = 'UPDATE';
   static const crossTenantAccessAttemptAction = 'CROSS_TENANT_ACCESS_ATTEMPT';
+  static const authorizationDeniedAction = 'AUTHZ_DENIED';
 
   final AppDatabase db;
   final SessionContext sessionContext;
@@ -73,6 +76,37 @@ abstract class LeagueScopedRepository {
                 : Value(jsonEncode(after)),
           ),
         );
+  }
+
+  // EXECUTION-PLAN §6.6.2 — role enforcement at the repository layer.
+  // The UI may hide buttons; the repository is authoritative. Named
+  // `_requireRole` in the plan; exposed without the underscore so subclass
+  // repositories in other libraries can call it.
+  Future<void> requireRole({
+    required UserRole minimum,
+    required String entityName,
+    required String operation,
+    String? entityId,
+  }) async {
+    if (sessionContext.role.atLeast(minimum)) {
+      return;
+    }
+
+    await writeAuditLog(
+      entityName: entityName,
+      entityId: entityId ?? 'N/A',
+      action: authorizationDeniedAction,
+      after: {
+        'operation': operation,
+        'requiredRole': minimum.wireName,
+        'sessionRole': sessionContext.role.wireName,
+      },
+    );
+
+    throw AuthorizationException(
+      '$operation on $entityName requires ${minimum.wireName}; '
+      'session role is ${sessionContext.role.wireName}',
+    );
   }
 
   Future<void> assertLeagueScope({
