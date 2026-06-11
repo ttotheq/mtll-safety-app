@@ -50,6 +50,12 @@ class VolunteerAssignmentRepository extends LeagueScopedRepository {
     String? teamId,
     String status = VolunteerAssignmentStatuses.active,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'VolunteerAssignment',
+      operation: 'create',
+    );
+
     final now = currentTimestamp();
     final row = VolunteerAssignmentRow(
       id: newId(),
@@ -103,6 +109,13 @@ class VolunteerAssignmentRepository extends LeagueScopedRepository {
     String? teamId,
     DateTime? endedAt,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'VolunteerAssignment',
+      operation: 'update',
+      entityId: id,
+    );
+
     final existing = await _findById(id);
     if (existing == null) {
       return null;

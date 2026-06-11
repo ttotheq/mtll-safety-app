@@ -36,6 +36,12 @@ class DivisionRepository extends LeagueScopedRepository {
     int? ageMin,
     int? ageMax,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'Division',
+      operation: 'create',
+    );
+
     final now = currentTimestamp();
     final row = DivisionRow(
       id: newId(),
@@ -84,6 +90,13 @@ class DivisionRepository extends LeagueScopedRepository {
     int? ageMin,
     int? ageMax,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'Division',
+      operation: 'update',
+      entityId: id,
+    );
+
     final existing = await _findById(id);
     if (existing == null) {
       return null;

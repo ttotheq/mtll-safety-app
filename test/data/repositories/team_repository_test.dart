@@ -115,77 +115,78 @@ void main() {
       });
     });
 
-    test(
-      'create and update compute display_name and audit changes',
-      () async {
-        final leagueId = uuid.v7();
-        final userId = uuid.v7();
-        final seasonId = uuid.v7();
-        final majors = uuid.v7();
-        final minors = uuid.v7();
-        final repository = TeamRepository(
-          db: db,
-          sessionContext: SessionContext(leagueId: leagueId, userId: userId),
-        );
-
-        await _insertLeague(db, leagueId, 'League A');
-        await _insertDivision(
-          db,
-          id: majors,
+    test('create and update compute display_name and audit changes', () async {
+      final leagueId = uuid.v7();
+      final userId = uuid.v7();
+      final seasonId = uuid.v7();
+      final majors = uuid.v7();
+      final minors = uuid.v7();
+      final repository = TeamRepository(
+        db: db,
+        sessionContext: SessionContext(
           leagueId: leagueId,
-          name: 'Majors',
-          sortOrder: 10,
-        );
-        await _insertDivision(
-          db,
-          id: minors,
-          leagueId: leagueId,
-          name: 'Tee Ball',
-          sortOrder: 20,
-        );
+          userId: userId,
+          role: UserRole.admin,
+        ),
+      );
 
-        final created = await repository.create(
-          seasonId: seasonId,
-          divisionId: majors,
-          name: ' Bonilla ',
-        );
-        final updated = await repository.update(
-          id: created.id,
-          divisionId: minors,
-          name: 'Ramirez',
-          color: 'blue',
-        );
+      await _insertLeague(db, leagueId, 'League A');
+      await _insertDivision(
+        db,
+        id: majors,
+        leagueId: leagueId,
+        name: 'Majors',
+        sortOrder: 10,
+      );
+      await _insertDivision(
+        db,
+        id: minors,
+        leagueId: leagueId,
+        name: 'Tee Ball',
+        sortOrder: 20,
+      );
 
-        expect(created.leagueId, leagueId);
-        expect(created.createdByUserId, userId);
-        expect(created.name, 'Bonilla');
-        expect(created.displayName, 'MAJORS - BONILLA');
-        expect(updated, isNotNull);
-        expect(updated!.divisionId, minors);
-        expect(updated.name, 'Ramirez');
-        expect(updated.displayName, 'TEE BALL - RAMIREZ');
-        expect(updated.color, 'blue');
-        expect(updated.updatedByUserId, userId);
+      final created = await repository.create(
+        seasonId: seasonId,
+        divisionId: majors,
+        name: ' Bonilla ',
+      );
+      final updated = await repository.update(
+        id: created.id,
+        divisionId: minors,
+        name: 'Ramirez',
+        color: 'blue',
+      );
 
-        final auditRows = await (db.select(
-          db.auditLogs,
-        )..where((audit) => audit.entityId.equals(created.id))).get();
+      expect(created.leagueId, leagueId);
+      expect(created.createdByUserId, userId);
+      expect(created.name, 'Bonilla');
+      expect(created.displayName, 'MAJORS - BONILLA');
+      expect(updated, isNotNull);
+      expect(updated!.divisionId, minors);
+      expect(updated.name, 'Ramirez');
+      expect(updated.displayName, 'TEE BALL - RAMIREZ');
+      expect(updated.color, 'blue');
+      expect(updated.updatedByUserId, userId);
 
-        expect(auditRows.map((row) => row.action), [
-          LeagueScopedRepository.createAction,
-          LeagueScopedRepository.updateAction,
-        ]);
-        expect(auditRows.first.beforeJson, isNull);
-        expect(
-          jsonDecode(auditRows.first.afterJson!)['displayName'],
-          'MAJORS - BONILLA',
-        );
-        expect(
-          jsonDecode(auditRows.last.afterJson!)['displayName'],
-          'TEE BALL - RAMIREZ',
-        );
-      },
-    );
+      final auditRows = await (db.select(
+        db.auditLogs,
+      )..where((audit) => audit.entityId.equals(created.id))).get();
+
+      expect(auditRows.map((row) => row.action), [
+        LeagueScopedRepository.createAction,
+        LeagueScopedRepository.updateAction,
+      ]);
+      expect(auditRows.first.beforeJson, isNull);
+      expect(
+        jsonDecode(auditRows.first.afterJson!)['displayName'],
+        'MAJORS - BONILLA',
+      );
+      expect(
+        jsonDecode(auditRows.last.afterJson!)['displayName'],
+        'TEE BALL - RAMIREZ',
+      );
+    });
 
     test('create audits and throws on a cross-tenant division', () async {
       final leagueA = uuid.v7();
@@ -193,7 +194,7 @@ void main() {
       final divisionB = uuid.v7();
       final repository = TeamRepository(
         db: db,
-        sessionContext: SessionContext(leagueId: leagueA),
+        sessionContext: SessionContext(leagueId: leagueA, role: UserRole.admin),
       );
 
       await _insertLeague(db, leagueA, 'League A');

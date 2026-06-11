@@ -36,6 +36,12 @@ class RoleRepository extends LeagueScopedRepository {
     required bool permitsMinor,
     required int sortOrder,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'Role',
+      operation: 'create',
+    );
+
     final now = currentTimestamp();
     final row = RoleRow(
       id: newId(),
@@ -84,6 +90,13 @@ class RoleRepository extends LeagueScopedRepository {
     required bool permitsMinor,
     required int sortOrder,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'Role',
+      operation: 'update',
+      entityId: id,
+    );
+
     final existing = await _findById(id);
     if (existing == null) {
       return null;

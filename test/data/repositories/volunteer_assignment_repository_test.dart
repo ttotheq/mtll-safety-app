@@ -116,7 +116,11 @@ void main() {
         final teamId = uuid.v7();
         final repository = VolunteerAssignmentRepository(
           db: db,
-          sessionContext: SessionContext(leagueId: leagueId, userId: userId),
+          sessionContext: SessionContext(
+            leagueId: leagueId,
+            userId: userId,
+            role: UserRole.admin,
+          ),
         );
 
         await _insertLeague(db, leagueId, 'League A');
@@ -173,7 +177,10 @@ void main() {
       final leagueId = uuid.v7();
       final repository = VolunteerAssignmentRepository(
         db: db,
-        sessionContext: SessionContext(leagueId: leagueId),
+        sessionContext: SessionContext(
+          leagueId: leagueId,
+          role: UserRole.admin,
+        ),
       );
 
       await _insertLeague(db, leagueId, 'League A');

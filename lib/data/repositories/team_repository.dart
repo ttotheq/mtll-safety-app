@@ -37,6 +37,12 @@ class TeamRepository extends LeagueScopedRepository {
     String? managerVolunteerId,
     String? color,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'Team',
+      operation: 'create',
+    );
+
     final teamName = requireNonBlank(name, 'name');
     final division = await _requireDivision(divisionId);
 
@@ -92,6 +98,13 @@ class TeamRepository extends LeagueScopedRepository {
     String? managerVolunteerId,
     String? color,
   }) async {
+    await requireRole(
+      minimum: UserRole.admin,
+      entityName: 'Team',
+      operation: 'update',
+      entityId: id,
+    );
+
     final existing = await _findById(id);
     if (existing == null) {
       return null;
@@ -107,20 +120,19 @@ class TeamRepository extends LeagueScopedRepository {
     final division = await _requireDivision(divisionId);
 
     final now = currentTimestamp();
-    await (db.update(db.teams)..where(
-          (team) => team.id.equals(id) & tenantFilter(team.leagueId),
-        ))
-        .write(
-          TeamsCompanion(
-            divisionId: Value(division.id),
-            name: Value(teamName),
-            displayName: Value(_displayName(division.name, teamName)),
-            managerVolunteerId: Value(normalizeNullable(managerVolunteerId)),
-            color: Value(normalizeNullable(color)),
-            updatedAt: Value(now),
-            updatedByUserId: Value(sessionContext.userId),
-          ),
-        );
+    await (db.update(
+      db.teams,
+    )..where((team) => team.id.equals(id) & tenantFilter(team.leagueId))).write(
+      TeamsCompanion(
+        divisionId: Value(division.id),
+        name: Value(teamName),
+        displayName: Value(_displayName(division.name, teamName)),
+        managerVolunteerId: Value(normalizeNullable(managerVolunteerId)),
+        color: Value(normalizeNullable(color)),
+        updatedAt: Value(now),
+        updatedByUserId: Value(sessionContext.userId),
+      ),
+    );
 
     final updated = await (db.select(
       db.teams,
