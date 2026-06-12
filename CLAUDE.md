@@ -80,17 +80,23 @@ The project spans two sibling directories. **Code lives here; spec lives next do
     ├── .gitignore                Flutter + native build + generated code + *.db.enc + evidence/
     │
     ├── lib/                      Dart application code
-    │   ├── main.dart             Flutter entry point (default scaffold; will be replaced)
-    │   ├── app/                  root widget + global UI overlays (§5.D tamper modal, migration-failed modal)
+    │   ├── main.dart             Flutter entry point — wires EncryptedFileDatabaseGateway + ProviderScope
+    │   ├── app/                  MtllApp root, RootGate first-run routing, providers, DatabaseGateway
+    │   │                         (§5.D tamper / migration-failed modals still pending)
     │   ├── data/
-    │   │   ├── database/         Drift schema — 16 entities + 3 supporting tables (Sprint 1 fills this)
-    │   │   └── repositories/     LeagueScopedRepository<T> base + per-entity repos
-    │   ├── domain/               Freezed models + business invariants
-    │   ├── security/             KeyProvider, AuditChainVerifier, AuthenticationCoordinator
-    │   ├── presentation/         screens, widgets (Sprint S3+ UI work)
-    │   └── l10n/                 ARB files (en-US v1, es-MX v2)
+    │   │   ├── database/         Drift schema — 16 entities + 3 supporting tables, seeds, migrations
+    │   │   └── repositories/     LeagueScopedRepository base + per-entity repos, SessionContext/UserRole
+    │   ├── domain/               Freezed models + business invariants (still empty)
+    │   ├── security/             KeyProvider, KdfParams, PasscodeHasher, MasterKeyHolder, SQLCipher
+    │   │                         pragma helpers (AuditChainVerifier, AuthenticationCoordinator pending)
+    │   ├── presentation/         onboarding wizard (W1), unlock screen, navigation shell, dashboard
+    │   └── l10n/                 ARB files (en-US v1, es-MX v2) (still empty)
     │
-    ├── test/                     unit + widget tests (load-bearing: no-player-table, audit-immutability, cross-tenant)
+    ├── lints/mtll_lints/         project-local custom_lint package — cross_tenant_query rule (§6.3.5)
+    │                             run with `dart run custom_lint`; fixture at test/lints/
+    │
+    ├── test/                     unit + widget tests (load-bearing: no-player-table, audit-immutability,
+    │                             cross-tenant, lint fixture, W1 acceptance, shell navigation)
     │
     ├── android/                  Android native scaffold (v1 target, no SDK installed yet)
     ├── ios/                      iOS native scaffold (MVP target, needs Xcode for build)
