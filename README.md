@@ -4,7 +4,7 @@ A cross-platform Flutter app that replaces Mission Trails Little League's volunt
 
 ## Status
 
-**Pre-MVP, Sprint 1 (data layer).** Scaffolded 2026-05-19. MVP target 2026-09-05 (macOS + iOS); v1 target 2027-01-10 (adds Windows + Android). See [EXECUTION-PLAN §7.2](../safety/plan/EXECUTION-PLAN.md) for the sprint plan.
+**Pre-MVP, Sprints S1–S2 complete (2026-06-12).** The security kernel (encrypted SQLCipher database, Argon2id key management, audit immutability, repository-layer tenancy + authorization, cross-tenant lint) and the W1 league-onboarding wizard, PIN unlock, and responsive navigation shell are merged and test-covered. Next up: Sprint S3 (Season Setup W2 + Requirements Matrix Editor). MVP target 2026-09-05 (macOS + iOS); v1 target 2027-01-10 (adds Windows + Android). See [EXECUTION-PLAN §7.2](../safety/plan/EXECUTION-PLAN.md) for the sprint plan and `HANDOFF.md` for current state.
 
 ## What it does
 
