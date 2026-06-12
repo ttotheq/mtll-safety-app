@@ -31,4 +31,6 @@ GitHub is the canonical system of record for this project. From here forward, ch
 
 ## License
 
-TBD. (Distribution model is GitHub Releases self-install; license decision before first public release.)
+[Apache License 2.0](LICENSE). Free for any league to use, modify, and
+redistribute; contributions are accepted under the same terms. Security
+reports: see [SECURITY.md](SECURITY.md).

@@ -73,6 +73,9 @@ leagues/
 .env.local
 secrets.json
 
+# --- Claude Code machine-local settings ---
+.claude/settings.local.json
+
 # --- Test artifacts ---
 .test_coverage.dart
 test/.test_coverage.dart
