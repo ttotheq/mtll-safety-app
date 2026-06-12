@@ -1,64 +1,53 @@
 # HANDOFF — MTLL Safety Clearance App
 
-**Written:** 2026-06-10  
+**Written:** 2026-06-12  
 **Audience:** the next Codex or Claude session opened from this repo root  
 **Repo cwd:** `~/projects/mtll-safety-app/`  
 **Spec workspace:** `~/projects/safety/`  
-**Status:** implementation handoff after closing the Sprint S1 / Epic E1 security-kernel gaps (repositories, repository-layer authorization, cross-tenant lint, SQLCipher key management)
+**Status:** implementation handoff after Sprint S2 core delivery (W1 onboarding wizard, app bootstrap, navigation shell) on top of the completed S1 security kernel
 
 Read this file first, then read `CLAUDE.md`. This handoff follows `HANDOFF_TEMPLATE.md` and is intended to be continuation-safe rather than narrative.
 
 ## Verified Facts
 
-### Schema and database layer
+### Carried forward from the 2026-06-10 handoff (unchanged)
 
-- The local Drift schema is at `schemaVersion => 6` with 16 tables wired in `lib/data/database/app_database.dart` (`leagues` through `audit_log_chain`; same list as the previous handoff).
-- `audit_log` immutability is enforced in SQLite with `audit_log_no_update` and `audit_log_no_delete` triggers, and `test/data/database/schema_test.dart` includes a tamper test ("AuditLog UPDATE and DELETE are blocked by triggers").
-- The schema scope-wall guard in `test/data/database/schema_test.dart` rejects table names containing `player`, `roster`, `minor`, `athlete`, `draft`, `evaluation`, or `registration`.
-- `lib/data/database/app_database.g.dart` remains local-only generated output (gitignored, never committed).
+- Drift schema at `schemaVersion => 6`, 16 tables; `audit_log` append-only triggers with a tamper test; scope-wall schema guard (`player`, `roster`, `minor`, `athlete`, `draft`, `evaluation`, `registration`).
+- Nine repositories under `lib/data/repositories/` with same-tenant + cross-tenant tests; repository-layer authorization (`UserRole` VIEWER < ADMIN < OWNER, `requireRole` → `AUTHZ_DENIED` audit + `AuthorizationException`).
+- `cross_tenant_query` custom lint at `lints/mtll_lints/` (run `dart run custom_lint`), with the committed `expect_lint` fixture at `test/lints/cross_tenant_query_fixture.dart`.
+- §6.1 SQLCipher key management in `lib/security/` (KdfParams + tuning ratchet, KeychainSecureStore, LocalKeystoreKeyProvider, MasterKeyHolder, key/rekey pragma builders) with real-SQLCipher integration tests (Homebrew `libsqlcipher`, auto-skip when absent).
 
-### Repository layer
+### New in Sprint S2 (PR #7, merged 2026-06-12)
 
-- `lib/data/repositories/` now contains nine repository files. New since the previous handoff:
-  - `role_clearance_requirement_repository.dart`: tenant-filtered listing, audited cross-tenant `getById()`, `create()`/`update()` validating the requirement level against the locked `REQUIRED / OPTIONAL / CONDITIONAL_OK / NOT_APPLICABLE` set (reused from `SeedRequirementLevels`).
-  - `team_repository.dart`: computes the workbook-compatible `display_name` ("MAJORS - BONILLA") on write per design-notes §1.4 and tenant-asserts the referenced Division (cross-tenant division references are audited and rejected).
-  - `volunteer_assignment_repository.dart`: `ACTIVE / REMOVED / REPLACED` status enum per design-notes §1.7, audited `create()`/`update()`.
-- Repository-layer authorization is implemented per EXECUTION-PLAN §6.6:
-  - `SessionContext` (`lib/data/repositories/session_context.dart`) carries `role` (`UserRole` enum, VIEWER < ADMIN < OWNER), defaulting to least-privilege VIEWER.
-  - `LeagueScopedRepository.requireRole(...)` writes an `AUTHZ_DENIED` audit entry and throws `AuthorizationException` before any data access. The plan names this `_requireRole`; it is exposed without the underscore so subclass repositories in other libraries can call it.
-  - All entity `create()`/`update()` methods are gated at ADMIN minimum (Division, Role, ClearanceType, RoleClearanceRequirement, Team, VolunteerAssignment). Reads remain open to VIEWER.
-  - The W1 onboarding bootstrap (`league_onboarding_repository.dart`) is intentionally ungated — it runs pre-authentication, before any User row exists.
+- **App bootstrap** (`lib/app/`):
+  - `MtllApp` + `RootGate` implement the W1 trigger routing: no league on device → onboarding wizard; league present → PIN unlock screen; open database → navigation shell.
+  - Riverpod providers in `lib/app/providers.dart`: `databaseGatewayProvider` (must be overridden at start), `appDatabaseProvider`, `sessionContextProvider`, `activeLeagueProvider`, `seasonsProvider`.
+  - `DatabaseGateway` (`lib/app/database_gateway.dart`): `EncryptedFileDatabaseGateway` implements §6.3.1 `<app-data>/leagues/<league_uuid>/db.enc` with a `catalog.json` index (stem → name/short_name, used for W1 AF-1 collision checks) over the §6.1 KeyProvider flow; `InMemoryDatabaseGateway` for tests. `lib/main.dart` wires the production gateway (counter scaffold removed).
+- **W1 onboarding wizard** (`lib/presentation/onboarding/onboarding_wizard_screen.dart`): 3-step Stepper — league profile (name required; short_name, district, charter, timezone, contacts, color validated inline), divisions (7 preset + custom add, AF-3 ≥ 1 required), owner account (name, email, 6-digit PIN + confirm). AF-1 duplicate short_name warns and blocks. Submit creates the database via the gateway, runs `bootstrapLeague`, sets an OWNER `SessionContext`, then shows the W1 step 8 season-or-dashboard prompt (W2 stubbed to a snackbar until S3).
+- **PasscodeHasher** (`lib/security/passcode_hasher.dart`): §6.5.2 Argon2id PIN hash in a PHC-style string (`argon2id$v=19$m=…,t=…,p=…$salt$hash`), constant-time verify, parameters carried in the encoding. Default 19 MiB / t=2 / p=1 (interactive posture; the 64 MiB §6.1.1 floor applies to the DB master key, not the login check).
+- **Unlock screen** (`lib/presentation/unlock/unlock_screen.dart`): minimal PIN path — derive key, open database, verify `local_passcode_hash`, set session. Carries a justified `// ignore: cross_tenant_query` (pre-session read; the file is the tenancy boundary).
+- **Navigation shell** (`lib/presentation/shell/home_shell.dart`): §5.0.1 — `NavigationRail` ≥ 600dp / `NavigationBar` < 600dp (`HomeShell.railBreakpointDp`), compact top-bar actions at mobile width, league name in the top bar, Season selector with empty-state CTA, six destinations (Dashboard live; Volunteers/Teams/Clearances/Matrix/Settings labeled placeholders).
+- **Dashboard empty state** (`lib/presentation/dashboard/dashboard_screen.dart`): league name + "Add a volunteer", "Import from spreadsheet/CSV", "Set up a season" CTAs per §5.1/W1.
+- **`bootstrapLeague` extended**: optional `leagueId` passthrough (league UUID doubles as the file stem per §6.3.1) and W1 profile fields (timezone, contacts, primaryColorHex).
+- **`UserRole.fromWire`** added for session construction from stored `User.role`.
 
-### Cross-tenant lint (EXECUTION-PLAN §6.3.5)
+### S2 exit-criteria verification (per §7.2)
 
-- A project-local `custom_lint` plugin package lives at `lints/mtll_lints/` (path dev-dependency). Its `cross_tenant_query` rule reports, at ERROR severity, any Drift `select()`/`delete()` on a league-scoped table whose enclosing query expression lacks a `leagueId` filter (`tenantFilter(...)` or a direct `leagueId` predicate).
-- Run with `dart run custom_lint`. Wired via `analysis_options.yaml` (`analyzer.plugins: [custom_lint]`).
-- `*_test.dart` files are exempt (tests query directly to verify audit behavior).
-- `test/lints/cross_tenant_query_fixture.dart` holds the synthetic violation with an `// expect_lint: cross_tenant_query` marker — `dart run custom_lint` fails with `unfulfilled_expect_lint` if the rule ever stops firing (S1 exit criterion "cross-tenant lint fires on a synthetic violation" is therefore continuously verified). A negative control (bare violation in `lib/`, no marker) was confirmed to report `cross_tenant_query • ERROR` during this session.
-- Intentional unfiltered reads (the fetch-then-`assertLeagueScope` audit pattern and post-update re-reads) carry justified `// ignore: cross_tenant_query` suppressions.
-- `lib/main.dart` carries a scoped `// ignore: missing_provider_scope` (riverpod_lint) on the placeholder scaffold so the custom_lint gate stays clean; ProviderScope arrives with the S2 bootstrap.
+All verified by tests in `test/presentation/`:
 
-### SQLCipher key management (EXECUTION-PLAN §6.1)
-
-- `lib/security/` now contains:
-  - `kdf_params.dart`: Argon2id parameter object — §6.1.1 floor (64 MiB / 3 iterations / parallelism 1 / 32-byte output), JSON round-trip, and `tuneKdfParams(...)` implementing the device-tuning ratchet (below 200 ms → step memory through 128 MiB then 256 MiB until the 300–500 ms target is met).
-  - `secure_store.dart`: `SecureStore` abstraction + `KeychainSecureStore` over `flutter_secure_storage` with `first_unlock_this_device` accessibility on macOS/iOS (§6.1.2; salt never syncs to iCloud).
-  - `key_provider.dart`: `KeyProvider` abstraction (§6.1.6 — v2 `RemoteKmsKeyProvider` stays a drop-in swap) + `LocalKeystoreKeyProvider`: per-league 32-byte random salt under `db_salt_<stem>`, tuned params JSON under `db_kdf_params_<stem>`, Argon2id derivation via pointycastle. Passcode and derived key are never stored.
-  - `master_key_holder.dart`: §6.1.3 in-memory-only key holder with buffer zeroing.
-  - `sqlcipher_database.dart`: raw-hex `PRAGMA key` / `PRAGMA rekey` builders (§6.1.1 step 3, §6.1.5) and `openEncryptedDatabase(...)` returning a Drift `NativeDatabase` that applies the key pragma at connection setup.
-- `test/security/sqlcipher_database_test.dart` runs real-SQLCipher integration tests against a host SQLCipher library (Homebrew `libsqlcipher.dylib` or `$SQLCIPHER_LIB`; tests auto-skip when absent): encrypted file header check, wrong-key rejection, §6.1.5 rekey rotation, and Drift `AppDatabase` open-persist-reopen over an encrypted file. Homebrew `sqlcipher` (3.53.1) was installed on this machine during this session as a dev dependency for these tests.
+- Empty Dashboard renders after onboarding with league name and CTAs — `onboarding_wizard_test.dart` W1 happy path.
+- Role list has 9 correct rows (permits_minor / is_on_field flags asserted) — same test, plus the pre-existing onboarding repository test.
+- AuditLog CREATE entry for League — asserted in the happy-path test.
+- No-player-data schema test still passes — full suite green.
+- Navigation reaches all primary screens without crash — `home_shell_test.dart`, both rail (1280×900) and bottom-nav (420×900) widths.
 
 ### Test inventory
 
-15 test files, 71 tests, all passing: schema/scope-wall/uniqueness/audit-trigger tests, onboarding bootstrap, per-entity repository same-tenant + cross-tenant tests, repository authorization tests, KDF/key-provider/key-holder/SQLCipher security tests, and the default widget smoke test.
-
-### GitHub state
-
-- `main` is the default branch; all S1 work landed via merged PRs #1–#5 (docs, repositories, authorization, cross-tenant lint, SQLCipher key management). Worktree was clean at handoff time.
+18 test files, 83 tests, all passing. New since last handoff: `test/presentation/` (onboarding wizard, home shell, root gate) and `test/security/passcode_hasher_test.dart`. The default counter `widget_test.dart` was removed with the scaffold. Drift prints a benign "multiple databases" warning in widget tests (each test owns an in-memory instance).
 
 ## Verification Run
 
-Verified in this repo on `2026-06-10` during the current session, on a clean `main` checkout (after PR #5 merged):
+Verified in this repo on `2026-06-12` during the current session, on clean `main` (after PR #7 merged):
 
 ```bash
 flutter analyze
@@ -69,73 +58,57 @@ dart run custom_lint
 Result:
 
 - `flutter analyze` — passed ("No issues found!")
-- `flutter test` — passed (71/71)
-- `dart run custom_lint` — passed ("No issues found!"); the `expect_lint` fixture marker confirms the cross-tenant rule fires
+- `flutter test` — passed (83/83)
+- `dart run custom_lint` — passed ("No issues found!")
 
 Notes:
 
-- `build_runner` was not rerun this session: no Drift table or other codegen inputs changed.
-- Flutter still prints non-fatal Swift Package Manager adoption warnings for `sqlcipher_flutter_libs` and `flutter_secure_storage*`; they do not block any gate.
-- The SQLCipher integration tests ran against Homebrew `libsqlcipher` 3.53.1 and passed; on machines without a host SQLCipher library they skip with an explanatory message.
+- `build_runner` was not rerun: no Drift table or codegen inputs changed.
+- Swift Package Manager adoption warnings from `sqlcipher_flutter_libs` / `flutter_secure_storage*` remain non-fatal.
 
 ## Conflicts / Inconsistencies
 
-### 1. Onboarding role-count and matrix sizing still disagree across current spec sources (unchanged, unresolved)
+Items 1–4 from the 2026-06-10 handoff stand unchanged (PRD 7-role vs plan 9-role onboarding text; dual scope-wall token lists; Argon2id package row in the §3 stack table vs pointycastle; `_requireRole` underscore naming). One addition:
 
-- `~/projects/safety/requirements/PRD-MTLL-Safety-Clearance-App.md` onboarding text still says `7 Role rows` and `12 × 7 = 84 RoleClearanceRequirement rows`, and still mentions `Junior Scorekeeper` as optional seeded role material.
-- `~/projects/safety/plan/EXECUTION-PLAN.md` W1 / S2 / `W1-AC-1` says onboarding seeds `9` roles and implies the `96`-row default matrix.
-- The repo implements the execution-plan shape (9 roles, 96 rows, `Not Assigned` seeded, no `Junior Scorekeeper`).
+### 5. S2 scope item "PIN + biometric" is partially delivered
 
-### 2. The execution plan still uses two different scope-wall token lists (unchanged, unresolved)
-
-- Sprint/DoD text in `~/projects/safety/plan/EXECUTION-PLAN.md` names `player`, `roster`, `minor`, `athlete`, `draft`, `evaluation`; CI/security-test language adds `registration`.
-- The repo test enforces the broader list including `registration`, per `CLAUDE.md`.
-
-### 3. Argon2id implementation package: §3 stack table vs §6.1.1 / pubspec
-
-- `~/projects/safety/plan/EXECUTION-PLAN.md` line ~382 (key-derivation stack row) says "Argon2id via `cryptography` package".
-- EXECUTION-PLAN §6.1.1 step 1 references "`dart:math` SecureRandom (or the `pointycastle` equivalent)", and this repo's `pubspec.yaml` has carried the comment "pointycastle: Argon2id for SQLCipher master-key derivation (§6.1.1 step 2)" since the scaffold commit.
-- The repo implements Argon2id via `pointycastle` (`Argon2BytesGenerator`). The `cryptography ^2.7` package remains in the stack for XChaCha20-Poly1305 evidence encryption (§6.4). Not silently resolved — flag to the spec workspace whether the §3 stack row should be corrected to pointycastle.
-
-### 4. `_requireRole` naming
-
-- EXECUTION-PLAN §6.6.2 names the guard `_requireRole(session, minimum: UserRole.admin)`. Dart underscore-privacy is library-scoped, so a literal `_requireRole` on the base class would be invisible to subclass repositories in other files. The repo implements it as `requireRole(...)` on `LeagueScopedRepository` with identical semantics (`AuthorizationException` + `AUTHZ_DENIED` audit entry).
+`~/projects/safety/plan/EXECUTION-PLAN.md` §7.2 S2 scope says "first User (OWNER) with PIN + biometric". The PIN path is implemented and tested. Biometric enrollment/unlock is **not** implemented: `local_auth` requires platform entitlements and a real macOS/iOS build, and this development machine has no full Xcode (see Open Risks). The S2 exit-criteria column does not reference biometric, so the sprint gate is met; the biometric gap is tracked here rather than silently dropped.
 
 ## Open Risks / Missing Work
 
-### Remaining S1 / E1 scope not covered by the six closed conditions
+### W1 / S2 deferrals
 
-- **AuditLogChain daily hash sealing logic** is not implemented — the `audit_log_chain` table exists with a uniqueness test, but no `AuditChainVerifier` (Merkle chain computation, startup scan, tamper modal trigger) exists yet in `lib/security/`.
-- **"Encrypted DB opens on macOS and iOS" exit criterion** is verified at the library level (host SQLCipher integration tests) but not yet as a running app: there is no `DatabaseService` / `AuthenticationCoordinator` wiring `KeyProvider` → `openEncryptedDatabase` → `AppDatabase` at startup, no PIN-entry flow, and no biometric unlock (§6.5). That is S2 bootstrap territory.
-- **KDF device tuning is not invoked anywhere** — `tuneKdfParams` exists with tests, but the "measure on first open" startup path that calls it is part of the missing app bootstrap.
-- **Key-zeroing lifecycle hooks** (screen lock / backgrounding / timeout / termination, §6.1.3) are not wired; `MasterKeyHolder.zero()` exists but nothing calls it yet.
+- **Biometric enrollment + unlock** (§6.5.1): deferred as above. The full sealed `AuthenticationCoordinator` state machine is also still pending; the unlock screen implements only the PIN path.
+- **Logo upload (W1 AF-2)**: not implemented — there is no blob store until the EvidenceFile work (S5). `League.logo_blob_id` stays null; the wizard has no logo field yet.
+- **KDF device tuning** (`tuneKdfParams`) is still not invoked at startup; `EncryptedFileDatabaseGateway` uses the default floor parameters.
+- **Key-zeroing lifecycle hooks** (§6.1.3) are still not wired to app lifecycle events.
+- **Timezone auto-detect** (W1 step 2 "auto-detected from OS") is a default-text field (`America/Los_Angeles`), not OS detection.
 
-### Other gaps carried forward
+### Carried-forward gaps
 
-- Config repositories still lack delete / disable semantics.
-- The onboarding UI / wizard flow (W1, Sprint S2) does not exist; `lib/main.dart` is still the default counter scaffold (with a scoped riverpod-lint ignore).
-- `test/widget_test.dart` is still the default counter smoke test and will need replacement with the S2 shell.
-- Biometric-outcomes test coverage (§6.5.1 table; a CLAUDE.md test of record) and the CSV PII denylist test (W11) are not yet implementable — their subjects don't exist yet.
-- OWNER-only operations (§6.6.4: user management, league settings, retention, audit export) have no repository surfaces yet, so the OWNER gate is exercised only by the role-hierarchy test.
+- AuditLogChain daily hash sealing logic (S1 remainder) — still the highest-priority security-kernel gap.
+- The whole app has never been launched on a real platform target: this machine lacks full Xcode (`xcodebuild` missing) and CocoaPods, so macOS/iOS builds fail at toolchain. The S1 "Encrypted DB opens on macOS" criterion remains verified only at the library level (host SQLCipher tests).
+- Config repositories still lack delete/disable semantics; OWNER-only operations (§6.6.4) have no repository surfaces.
+- CSV PII denylist (W11) and biometric-outcomes tests of record remain unimplementable until their subjects exist.
 
 ### Worktree cautions
 
-- Worktree was clean on `main` at handoff. No uncommitted work.
-- `lib/data/database/app_database.g.dart` stays local-only generated output (gitignored).
-- The SQLCipher integration tests depend on Homebrew `sqlcipher` on this machine; do not mistake their skip message on another machine for a failure.
+- Worktree clean on `main` at handoff; PRs #1–#7 merged.
+- `lib/data/database/app_database.g.dart` remains local-only generated output.
+- SQLCipher integration tests skip on machines without Homebrew `sqlcipher`.
 
 ## Verified Next Steps
 
 Supported by `~/projects/safety/plan/EXECUTION-PLAN.md` (spec-canonical):
 
-1. Close the remaining S1 / E1 item: AuditLogChain daily hash sealing (§6.2, S1 scope "AuditLogChain daily hash"), including the startup verification scan that drives the §5.D.1 tamper modal.
-2. S2 (per §7.2, dated 2026-06-02 – 2026-06-15): W1 onboarding wizard end-to-end, first User (OWNER) with PIN + biometric, navigation shell, responsive breakpoints, Season selector. The S2 PIN/biometric work is where `KeyProvider`, `tuneKdfParams`, `MasterKeyHolder`, and `openEncryptedDatabase` get wired into a real `AuthenticationCoordinator` (§6.5.1 sealed state machine).
+1. **S3 (2026-06-16 – 2026-06-29 per §7.2): Season Setup (W2, no clone) + Requirements Matrix Editor (5.6)** — Season creation wizard, season-specific RoleClearanceRequirement overrides, matrix-change impact preview with cascading `VolunteerClearance` N_A writes, Settings → Seasons + Matrix tabs. The shell's Season selector and "Set up a season" CTAs already route to W2 stubs.
+2. AuditLogChain daily hash sealing (S1 scope remainder) — no sprint reassignment exists in the plan; it remains open S1 work.
 
 ## Recommendations
 
 Engineering judgment, not verified project truth:
 
-1. Implement AuditLogChain sealing before starting S2 UI — it completes the S1 security kernel while the audit-layer context is fresh, and S2's onboarding writes will then be chain-covered from day one.
-2. When building the S2 bootstrap, construct `SessionContext` with the authenticated user's `UserRole` parsed from `User.role` (stored as `OWNER`/`ADMIN`/`VIEWER` wire strings); a `UserRole.fromWire(...)` helper was deliberately not added until that call site exists.
-3. Keep the custom_lint gate in any future CI workflow as a required step alongside `flutter analyze` and `flutter test` (`dart run custom_lint` is the command; EXECUTION-PLAN §6.3.5 calls it build-blocking).
-4. Surface spec inconsistencies #1–#3 above to the spec workspace (`~/projects/safety/`) in one batch rather than patching them piecemeal from this repo.
+1. Close the AuditLogChain sealing before or alongside early S3 — every sprint that writes more audit rows without chain coverage widens the unverifiable window.
+2. When S3 builds Settings tabs, surface the seeded Role list there — it gives the W1 "view the seeded Role list" acceptance stub a UI home (currently verified at the data layer).
+3. Wire `tuneKdfParams` and the lifecycle key-zeroing when the first real device build happens (Xcode install) — both need wall-clock and lifecycle behavior that only a running app exhibits.
+4. Decide whether the biometric S2 gap moves to S3 or to the first device-build milestone; it needs entitlements work that is pointless before Xcode exists on the dev machine.
