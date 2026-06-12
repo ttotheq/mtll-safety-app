@@ -9,6 +9,12 @@ enum UserRole {
 
   final String wireName;
 
+  /// Parses the wire string stored in User.role ('VIEWER'/'ADMIN'/'OWNER').
+  static UserRole fromWire(String value) => UserRole.values.firstWhere(
+    (role) => role.wireName == value,
+    orElse: () => throw ArgumentError.value(value, 'value', 'unknown role'),
+  );
+
   bool atLeast(UserRole minimum) => index >= minimum.index;
 }
 

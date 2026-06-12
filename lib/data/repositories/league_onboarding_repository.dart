@@ -56,9 +56,15 @@ class LeagueOnboardingRepository {
     required String ownerEmail,
     required String ownerName,
     required String ownerPasscodeHash,
+    String? leagueId,
     String? shortName,
     String? district,
     String? charterNumber,
+    String? timezone,
+    String? contactName,
+    String? contactEmail,
+    String? contactPhone,
+    String? primaryColorHex,
   }) async {
     _requireNonBlank(leagueName, 'leagueName');
     _requireNonBlank(ownerEmail, 'ownerEmail');
@@ -75,22 +81,24 @@ class LeagueOnboardingRepository {
     }
 
     final now = DateTime.now().toUtc();
-    final leagueId = _uuid.v7();
+    // §6.3.1 — the league UUID doubles as the database file stem, so the
+    // caller may supply the id it already used to create the file.
+    final resolvedLeagueId = leagueId ?? _uuid.v7();
     final ownerUserId = _uuid.v7();
 
     return db.transaction(() async {
       final league = LeagueRow(
-        id: leagueId,
+        id: resolvedLeagueId,
         name: leagueName.trim(),
         shortName: _normalizeNullable(shortName),
         district: _normalizeNullable(district),
         charterNumber: _normalizeNullable(charterNumber),
-        timezone: 'America/Los_Angeles',
-        contactName: null,
-        contactEmail: null,
-        contactPhone: null,
+        timezone: _normalizeNullable(timezone) ?? 'America/Los_Angeles',
+        contactName: _normalizeNullable(contactName),
+        contactEmail: _normalizeNullable(contactEmail),
+        contactPhone: _normalizeNullable(contactPhone),
         logoBlobId: null,
-        primaryColorHex: null,
+        primaryColorHex: _normalizeNullable(primaryColorHex),
         locale: 'en-US',
         settingsJson: '{}',
         createdAt: now,
@@ -100,7 +108,7 @@ class LeagueOnboardingRepository {
       );
       await db.into(db.leagues).insert(_leagueCompanion(league));
       await _writeAuditLog(
-        leagueId: leagueId,
+        leagueId: resolvedLeagueId,
         userId: ownerUserId,
         entity: 'League',
         entityId: league.id,
@@ -111,7 +119,7 @@ class LeagueOnboardingRepository {
       for (final divisionInput in normalizedDivisions) {
         final division = DivisionRow(
           id: _uuid.v7(),
-          leagueId: leagueId,
+          leagueId: resolvedLeagueId,
           name: divisionInput.name,
           ageMin: divisionInput.ageMin,
           ageMax: divisionInput.ageMax,
@@ -123,7 +131,7 @@ class LeagueOnboardingRepository {
         );
         await db.into(db.divisions).insert(_divisionCompanion(division));
         await _writeAuditLog(
-          leagueId: leagueId,
+          leagueId: resolvedLeagueId,
           userId: ownerUserId,
           entity: 'Division',
           entityId: division.id,
@@ -136,7 +144,7 @@ class LeagueOnboardingRepository {
       for (final seed in defaultRoleSeeds) {
         final role = RoleRow(
           id: _uuid.v7(),
-          leagueId: leagueId,
+          leagueId: resolvedLeagueId,
           name: seed.name,
           isOnField: seed.isOnField,
           permitsMinor: seed.permitsMinor,
@@ -149,7 +157,7 @@ class LeagueOnboardingRepository {
         roleIdsByName[role.name] = role.id;
         await db.into(db.roles).insert(_roleCompanion(role));
         await _writeAuditLog(
-          leagueId: leagueId,
+          leagueId: resolvedLeagueId,
           userId: ownerUserId,
           entity: 'Role',
           entityId: role.id,
@@ -162,7 +170,7 @@ class LeagueOnboardingRepository {
       for (final seed in defaultClearanceTypeSeeds) {
         final clearanceType = ClearanceTypeRow(
           id: _uuid.v7(),
-          leagueId: leagueId,
+          leagueId: resolvedLeagueId,
           code: seed.code,
           name: seed.name,
           category: seed.category,
@@ -184,7 +192,7 @@ class LeagueOnboardingRepository {
             .into(db.clearanceTypes)
             .insert(_clearanceTypeCompanion(clearanceType));
         await _writeAuditLog(
-          leagueId: leagueId,
+          leagueId: resolvedLeagueId,
           userId: ownerUserId,
           entity: 'ClearanceType',
           entityId: clearanceType.id,
@@ -205,7 +213,7 @@ class LeagueOnboardingRepository {
 
         final requirement = RoleClearanceRequirementRow(
           id: _uuid.v7(),
-          leagueId: leagueId,
+          leagueId: resolvedLeagueId,
           seasonId: null,
           roleId: roleId,
           clearanceTypeId: clearanceTypeId,
@@ -221,7 +229,7 @@ class LeagueOnboardingRepository {
             .into(db.roleClearanceRequirements)
             .insert(_roleClearanceRequirementCompanion(requirement));
         await _writeAuditLog(
-          leagueId: leagueId,
+          leagueId: resolvedLeagueId,
           userId: ownerUserId,
           entity: 'RoleClearanceRequirement',
           entityId: requirement.id,
@@ -232,7 +240,7 @@ class LeagueOnboardingRepository {
 
       final ownerUser = UserRow(
         id: ownerUserId,
-        leagueId: leagueId,
+        leagueId: resolvedLeagueId,
         email: ownerEmail.trim(),
         name: ownerName.trim(),
         role: ownerRole,
@@ -248,7 +256,7 @@ class LeagueOnboardingRepository {
       );
       await db.into(db.users).insert(_userCompanion(ownerUser));
       await _writeAuditLog(
-        leagueId: leagueId,
+        leagueId: resolvedLeagueId,
         userId: ownerUserId,
         entity: 'User',
         entityId: ownerUser.id,
@@ -257,7 +265,7 @@ class LeagueOnboardingRepository {
       );
 
       return LeagueOnboardingResult(
-        leagueId: leagueId,
+        leagueId: resolvedLeagueId,
         ownerUserId: ownerUserId,
         divisionCount: normalizedDivisions.length,
         roleCount: defaultRoleSeeds.length,
